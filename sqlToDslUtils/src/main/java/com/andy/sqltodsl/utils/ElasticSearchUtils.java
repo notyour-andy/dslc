@@ -36,21 +36,21 @@ public class ElasticSearchUtils {
                     transTreeToDsl(treeNode.left, boolQueryBuilder, treeNode.value);
                     transTreeToDsl(treeNode.right, boolQueryBuilder, treeNode.value);
                 }else{
+                    //发生改变，则使用新的bool
                     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+                    transTreeToDsl(treeNode.left, boolQuery, treeNode.value);
+                    transTreeToDsl(treeNode.right, boolQuery, treeNode.value);
                     if (Objects.equals(operator, Operator.OR.getMark())){
-                        boolQueryBuilder.should().add(transTreeToDsl(treeNode.left, boolQuery, treeNode.value));
-                        boolQueryBuilder.should().add(transTreeToDsl(treeNode.right, boolQuery, treeNode.value));
+                        boolQueryBuilder.should().add(boolQuery);
                     }else{
-                        boolQueryBuilder.must().add(transTreeToDsl(treeNode.left, boolQuery, treeNode.value));
-                        boolQueryBuilder.must().add(transTreeToDsl(treeNode.right, boolQuery, treeNode.value));
+                        boolQueryBuilder.must().add(boolQuery);
                     }
                 }
-
             }else{
                 //表达式节点
                 if (Objects.equals(operator, Operator.OR.getMark())){
                     //如果为或
-                    if (Objects.equals(treeNode.getOperator(), "and")) {
+                    if (Objects.equals(treeNode.getOperator(), "=")) {
                         boolQueryBuilder.should().add(QueryBuilders.matchPhraseQuery(treeNode.getField(), treeNode.getValue().replace("'", "")));
                     }
                 }else{
