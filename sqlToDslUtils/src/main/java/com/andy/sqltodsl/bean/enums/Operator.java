@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -18,9 +19,9 @@ public enum Operator {
 
     RIGHT(")", 0, ')'),
 
-    OR("or", 2, '*'),
+    OR("OR", 2, '*'),
 
-    AND("and", 1, '+');
+    AND("AND", 1, '+');
 
 
     /**
@@ -47,6 +48,11 @@ public enum Operator {
                      .filter(ele -> Objects.equals(ele.getChr(), chr))
                      .findAny()
                      .orElse(null);
+    }
+
+    public static boolean contains(String operator){
+        operator = operator.toUpperCase(Locale.ROOT);
+        return getAllChr().contains(operator);
     }
 
     private final String mark;

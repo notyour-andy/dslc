@@ -4,6 +4,7 @@ import com.andy.sqltodsl.bean.enums.Operator;
 import com.andy.sqltodsl.bean.models.TreeNode;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -15,14 +16,27 @@ import java.util.Objects;
  */
 public class ElasticSearchUtils {
 
+    public static void main(String[] args) {
+        String sql = "select * from text where a = '1' and b = '2' or (c = '4' and d = '4' or e = '5' )";
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(parseQuerySqlToDsl(sql));
+//        List<OrderColumnModel> orderColumnList = SqlUtils.getOrderColumnList(sql);
+//        if (CollectionUtils.isNotEmpty(orderColumnList)){
+//            for (OrderColumnModel model : orderColumnList) {
+//                searchSourceBuilder.sort(model.getName(), SortOrder.fromString(model.getOrderType()));
+//            }
+//        }
+        System.out.println(searchSourceBuilder.toString());
+    }
 
-    public static String parseSqlToDsl(String sql){
+
+    public static BoolQueryBuilder parseQuerySqlToDsl(String sql){
         String expr = SqlUtils.getWhereStatement(sql).replace(" ", "");
         List<String> condList = SqlUtils.parseQueryConditions(sql);
         List<Map<String, Object>> mapList = SqlUtils.parseQueryConditionsToMapList(sql);
         String pattern = CommonUtils.getPattens(expr, condList);
         TreeNode tree = CommonUtils.makeExprTree(CommonUtils.transInfixToSuffixExpr(pattern), mapList);
-        return transTreeToDsl(tree, QueryBuilders.boolQuery(),tree.getValue()).toString();
+        return transTreeToDsl(tree, QueryBuilders.boolQuery(),tree.getValue());
     }
 
 

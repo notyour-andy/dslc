@@ -1,11 +1,17 @@
 package com.andy.sqltodsl.utils;
 
+import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlSchemaStatVisitor;
 import com.alibaba.druid.stat.TableStat;
+import com.alibaba.druid.util.JdbcConstants;
+import com.andy.sqltodsl.bean.models.OrderColumnModel;
 import com.google.inject.internal.util.Preconditions;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 
 import java.util.*;
 
@@ -18,6 +24,8 @@ public class SqlUtils {
     private static final String OPERATOR = "operator";
 
     public static void main(String[] args) {
+        String sql = "select * from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) order by a desc, e desc";
+
     }
 
 
@@ -28,6 +36,30 @@ public class SqlUtils {
         MySqlSchemaStatVisitor visitor = new MySqlSchemaStatVisitor();
         sqlStatement.accept(visitor);
         return visitor;
+    }
+
+
+
+    /**
+    *获取排序字段
+    *@author Andy
+    *@param sql 语句
+    *@return 排序字段
+    *@date 2022/11/25
+    */
+    public static List<OrderColumnModel> getOrderColumnList(String sql){
+        List<OrderColumnModel> modelList = new ArrayList<>();
+        OrderColumnModel model = null;
+        MySqlSchemaStatVisitor visitor = getVisitor(sql);
+        for (TableStat.Column column : visitor.getOrderByColumns()) {
+            model = new OrderColumnModel();
+            model.setName(column.getName());
+            //默认怎
+            model.setOrderType(MapUtils.getString(column.getAttributes(), "orderBy.type", "ASC"));
+            modelList.add(model);
+        }
+        return modelList;
+
     }
 
 
@@ -116,7 +148,13 @@ public class SqlUtils {
     *@date 2022/11/15
     */
     public static String getWhereStatement(String sql){
-        int index = sql.toUpperCase(Locale.ROOT).indexOf("WHERE");
-        return sql.substring(index + "WHERE".length());
+        List<SQLStatement> sqlStatementList = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        Preconditions.checkArgument(Objects.equals(sqlStatementList.size(), 1), "只支持单WHERE条件查询");
+        MySqlSelectQueryBlock mysqlSelectQueryBlock = ((MySqlSelectQueryBlock) (((SQLSelectStatement) sqlStatementList.get(0)).getSelect()).getQuery());
+        String stm = mysqlSelectQueryBlock.getWhere().toString();
+        //去除多余的符号
+        stm = stm.replace("\n", "");
+        stm = stm.replace("\t", "");
+        return stm;
     }
 }

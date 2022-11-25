@@ -118,7 +118,7 @@ public class CommonUtils {
             }else{
                 int index = (int) chr - '0';
                 //表达式
-                Preconditions.checkArgument(index < condtionMapList.size() , "index大小范围有误");
+                Preconditions.checkArgument(index < condtionMapList.size() , String.format("{%s}:index大小范围有误",chr));
                 Map<String, Object> dataMap = condtionMapList.get(index);
                 node = new TreeNode(0, MapUtils.getString(dataMap, "field"), MapUtils.getString(dataMap, "operator"), MapUtils.getString(dataMap, "value"), null, null);
             }
@@ -127,6 +127,8 @@ public class CommonUtils {
         }
         return stack.pop();
     }
+
+
 
 
 
