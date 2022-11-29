@@ -114,13 +114,20 @@ public class CommonUtils {
                 }
                 TreeNode rihgt = stack.pop();
                 TreeNode left = stack.pop();
-                node = new TreeNode(1, null, null, Operator.getByChr(chr).getMark(), left, rihgt);
+                node = new TreeNode(1, null, null, Operator.getByChr(chr).getMark(), 1, left, rihgt);
             }else{
                 int index = (int) chr - '0';
                 //表达式
                 Preconditions.checkArgument(index < condtionMapList.size() , String.format("{%s}:index大小范围有误",chr));
                 Map<String, Object> dataMap = condtionMapList.get(index);
-                node = new TreeNode(0, MapUtils.getString(dataMap, "field"), MapUtils.getString(dataMap, "operator"), MapUtils.getString(dataMap, "value"), null, null);
+                String val = MapUtils.getString(dataMap, "value");
+                //参数类型
+                int valType = 0;
+                if (val.startsWith("'")){
+                    valType = 1;
+                    val = val.substring(1, val.length()-1);
+                }
+                node = new TreeNode(0, MapUtils.getString(dataMap, "field"), MapUtils.getString(dataMap, "operator"), val, valType, null, null);
             }
             stack.push(node);
 

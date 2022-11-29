@@ -1,6 +1,7 @@
 package com.andy.sqltodsl.utils;
 
 import com.andy.sqltodsl.bean.enums.Operator;
+import com.andy.sqltodsl.bean.factory.QueryBuilderFactory;
 import com.andy.sqltodsl.bean.models.OrderColumnModel;
 import com.andy.sqltodsl.bean.models.TreeNode;
 import org.apache.commons.collections4.CollectionUtils;
@@ -20,7 +21,7 @@ import java.util.*;
 public class ElasticSearchUtils {
 
     public static void main(String[] args) {
-        String sql = "select * from text where a = '1' and b = '2' and c = '4' and d <= 5 or d > 6 order by f desc, g";
+        String sql = "select * from text where id = 123 and time > 1 and time < 3";
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(parseQuerySqlToDsl(sql));
         List<OrderColumnModel> orderColumnList = SqlUtils.getOrderColumnList(sql);
@@ -39,7 +40,7 @@ public class ElasticSearchUtils {
         List<Map<String, Object>> mapList = SqlUtils.parseQueryConditionsToMapList(sql);
         String pattern = CommonUtils.getPattens(expr, condList);
         TreeNode tree = CommonUtils.makeExprTree(CommonUtils.transInfixToSuffixExpr(pattern), mapList);
-        return transTreeToDsl(tree, QueryBuilders.boolQuery(),tree.getValue(), new ArrayList<>());
+        return transTreeToDsl(tree, QueryBuilders.boolQuery(), tree.getValue(), new ArrayList<>());
     }
 
 
@@ -64,35 +65,49 @@ public class ElasticSearchUtils {
             }else{
                 //表达式节点
                 List<QueryBuilder> builderList = Objects.equals(operator, Operator.OR.getMark()) ? boolQueryBuilder.should() : boolQueryBuilder.must();
-                treeNode.setValue(treeNode.getValue().replace("'", ""));
+                //修改
+                int type = parseVal(treeNode, rangeQueryList);
                 //如果为或
-                if (Objects.equals(treeNode.getOperator(), "=")) {
-                    builderList.add(QueryBuilders.matchPhraseQuery(treeNode.getField(), treeNode.getValue()));
-                }else {
-                    //查询是否已存在range
-                    Optional<RangeQueryBuilder> any = rangeQueryList.stream().filter(ele -> Objects.equals(ele.fieldName(), treeNode.getField())).findAny();
-                    RangeQueryBuilder rangeQueryBuilder = null;
-                    if (any.isPresent()){
-                        rangeQueryBuilder = any.get();
-                    }else{
-                        rangeQueryBuilder = new RangeQueryBuilder(treeNode.getField());
-                        rangeQueryList.add(rangeQueryBuilder);
-                        builderList.add(rangeQueryBuilder);
-                    }
-                    if (Objects.equals(treeNode.getOperator(), ">=")) {
-                        rangeQueryBuilder.gte(treeNode.getValue());
-                    } else if (Objects.equals(treeNode.getOperator(), ">")) {
-                        rangeQueryBuilder.gt(treeNode.getValue());
-                    } else if (Objects.equals(treeNode.getOperator(), "<=")) {
-                        rangeQueryBuilder.lte(treeNode.getValue());
-                    } else if (Objects.equals(treeNode.getOperator(), "<")) {
-                        rangeQueryBuilder.lt(treeNode.getValue());
-                    }
+                QueryBuilder queryBuilder = QueryBuilderFactory.generateQueryBuilder(treeNode, type, rangeQueryList);
+                if (type < 3){
+                    builderList.add(queryBuilder);
                 }
-
             }
         }
         return boolQueryBuilder;
+    }
+
+    /**
+    *设置rangeQueryBuilder参数
+    *@author Andy
+    *@date 2022/11/29
+    */
+    public static void setRangeQueryBuilder(RangeQueryBuilder builder, String operator, Object value){
+        if (Objects.equals(operator, ">=")) {
+            builder.gte(value);
+        } else if (Objects.equals(operator, ">")) {
+            builder.gt(value);
+        } else if (Objects.equals(operator, "<=")) {
+            builder.lte(value);
+        } else if (Objects.equals(operator, "<")) {
+            builder.lt(value);
+        }
+    }
+
+    /**
+    *校验参数类型，0:整型 1:字符串
+    *@author Andy
+    *@param treeNode 树节点
+    *@date 2022/11/29
+    */
+    private static Integer parseVal(TreeNode treeNode, List<RangeQueryBuilder> rangeQueryList){
+        if (Objects.equals(treeNode.getOperator(), "=")) {
+            return treeNode.getValType();
+        }else{
+            //范围查询
+            Optional<RangeQueryBuilder> optional = rangeQueryList.stream().filter(ele -> Objects.equals(ele.fieldName(), treeNode.getField())).findAny();
+            return optional.isPresent() ? 3 : 2;
+        }
     }
 
     private static boolean isNew(String initOp, String currentOp){

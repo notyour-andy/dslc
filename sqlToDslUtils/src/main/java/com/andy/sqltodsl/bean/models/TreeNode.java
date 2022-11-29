@@ -35,6 +35,11 @@ public class TreeNode {
     public String value;
 
     /**
+     * 0:整型 1:字符串型
+     */
+    public Integer valType;
+
+    /**
      * 左节点
      */
     public TreeNode left;
