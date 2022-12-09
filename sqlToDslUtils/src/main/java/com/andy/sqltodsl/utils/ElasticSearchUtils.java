@@ -5,10 +5,13 @@ import com.andy.sqltodsl.bean.factory.QueryBuilderFactory;
 import com.andy.sqltodsl.bean.models.OrderColumnModel;
 import com.andy.sqltodsl.bean.models.TreeNode;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 
@@ -21,16 +24,40 @@ import java.util.*;
 public class ElasticSearchUtils {
 
     public static void main(String[] args) {
-        String sql = "select * from text where id = 123 and time > 1 and time < 3";
+        String sql = "select * from text where id = 123 and time > 1 and time < 3 or state = 0 group by time, state, c limit 10";
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(parseQuerySqlToDsl(sql));
+        //order
         List<OrderColumnModel> orderColumnList = SqlUtils.getOrderColumnList(sql);
         if (CollectionUtils.isNotEmpty(orderColumnList)){
             for (OrderColumnModel model : orderColumnList) {
                 searchSourceBuilder.sort(model.getName(), SortOrder.fromString(model.getOrderType()));
             }
         }
-        System.out.println(searchSourceBuilder.toString());
+        //limit
+        Map<String, Object> argMap = SqlUtils.getLimitArgMap(sql);
+        if (MapUtils.isNotEmpty(argMap)){
+            searchSourceBuilder.from(MapUtils.getInteger(argMap, "from"));
+            searchSourceBuilder.size(MapUtils.getInteger(argMap, "size"));
+        }
+        //group by
+        List<String> fieldList = SqlUtils.getGroupByFieldList(sql);
+        if (CollectionUtils.isNotEmpty(fieldList)){
+            TermsAggregationBuilder last = null;
+            TermsAggregationBuilder first = null;
+            for (String field : fieldList) {
+                TermsAggregationBuilder aggBuilder = AggregationBuilders.terms("groupBy" + field).field(field);
+                if (!Objects.isNull(last)){
+                    last.subAggregation(aggBuilder);
+                }
+                if (fieldList.indexOf(field) == 0){
+                    first = aggBuilder;
+                }
+                last = aggBuilder;
+            }
+            searchSourceBuilder.aggregation(first);
+        }
+        System.out.println(searchSourceBuilder);
     }
 
 
@@ -69,7 +96,7 @@ public class ElasticSearchUtils {
                 int type = parseVal(treeNode, rangeQueryList);
                 //如果为或
                 QueryBuilder queryBuilder = QueryBuilderFactory.generateQueryBuilder(treeNode, type, rangeQueryList);
-                if (type < 3){
+                if (type != 3){
                     builderList.add(queryBuilder);
                 }
             }

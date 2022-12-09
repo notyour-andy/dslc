@@ -1,6 +1,8 @@
 package com.andy.sqltodsl.utils;
 
 import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.SQLExpr;
+import com.alibaba.druid.sql.ast.SQLLimit;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
@@ -24,8 +26,52 @@ public class SqlUtils {
     private static final String OPERATOR = "operator";
 
     public static void main(String[] args) {
-        String sql = "select * from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) order by a desc, e desc";
+        String sql = "select g from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
+        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
+//        SQLSelectGroupByClause groupBy = queryBlock.getGroupBy();
+        for (SQLExpr item : queryBlock.getGroupBy().getItems()) {
+            System.out.println(item.toString());
+        }
+    }
 
+
+    /**
+    *获取limit参数
+    *@author Andy
+    *@param sql sql语句
+    *@date 2022/11/30
+    */
+    public static Map<String, Object> getLimitArgMap(String sql){
+        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
+        SQLLimit limit = queryBlock.getLimit();
+        if(Objects.isNull(limit)){
+            return null;
+        }else{
+            Map<String, Object> returnMap = new HashMap<>();
+            returnMap.put("from", Objects.isNull(limit.getOffset()) ? 0 : limit.getOffset().toString());
+            returnMap.put("size", limit.getRowCount().toString());
+            return returnMap;
+        }
+    }
+
+    /**
+    *获取group by 参数
+    *@author Andy
+    *@param sql sql语句
+    *@date 2022/11/30
+    */
+    public static List<String> getGroupByFieldList(String sql){
+        List<String> resultList = new ArrayList<>();
+        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
+        for (SQLExpr item : queryBlock.getGroupBy().getItems()) {
+            resultList.add(item.toString());
+        }
+        return resultList;
+    }
+
+    public static MySqlSelectQueryBlock getQueryBlock(String sql){
+        List<SQLStatement> sqlStatementList = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        return ((MySqlSelectQueryBlock) (((SQLSelectStatement) sqlStatementList.get(0)).getSelect()).getQuery());
     }
 
 
@@ -49,7 +95,7 @@ public class SqlUtils {
     */
     public static List<OrderColumnModel> getOrderColumnList(String sql){
         List<OrderColumnModel> modelList = new ArrayList<>();
-        OrderColumnModel model = null;
+        OrderColumnModel model;
         MySqlSchemaStatVisitor visitor = getVisitor(sql);
         for (TableStat.Column column : visitor.getOrderByColumns()) {
             model = new OrderColumnModel();
@@ -86,6 +132,13 @@ public class SqlUtils {
         return resultSet;
     }
 
+    /**
+    *获取字段名称
+    *@author Andy
+    *@param tableNameList 表名列表
+    *@param con 查询条件
+    *@date 2022/11/30
+    */
     private static String getFieldName(List<String> tableNameList, TableStat.Condition con) {
         //单表查询, 普通字段:tableName.fieldName nested字段:field_name.field_name
         String fullName = con.getColumn().getFullName();
@@ -107,7 +160,7 @@ public class SqlUtils {
     */
     public static List<Map<String, Object>> parseQueryConditionsToMapList(String sql){
         List<Map<String, Object>> resultList = new ArrayList<>();
-        Map<String, Object> dataMap = null;
+        Map<String, Object> dataMap;
         MySqlSchemaStatVisitor visitor = getVisitor(sql);
         List<String> tableNameList = getTableNameList(visitor);
         for (TableStat.Condition con : visitor.getConditions()) {
@@ -148,6 +201,7 @@ public class SqlUtils {
     *@date 2022/11/15
     */
     public static String getWhereStatement(String sql){
+
         List<SQLStatement> sqlStatementList = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
         Preconditions.checkArgument(Objects.equals(sqlStatementList.size(), 1), "只支持单WHERE条件查询");
         MySqlSelectQueryBlock mysqlSelectQueryBlock = ((MySqlSelectQueryBlock) (((SQLSelectStatement) sqlStatementList.get(0)).getSelect()).getQuery());
