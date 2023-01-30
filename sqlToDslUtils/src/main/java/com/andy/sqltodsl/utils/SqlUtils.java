@@ -81,6 +81,9 @@ public class SqlUtils {
         SQLStatement sqlStatement = parser.parseStatement();
         MySqlSchemaStatVisitor visitor = new MySqlSchemaStatVisitor();
         sqlStatement.accept(visitor);
+        for (TableStat.Column column : visitor.getColumns()) {
+            System.out.println(column);
+        }
         return visitor;
     }
 
@@ -100,12 +103,11 @@ public class SqlUtils {
         for (TableStat.Column column : visitor.getOrderByColumns()) {
             model = new OrderColumnModel();
             model.setName(column.getName());
-            //默认怎
+            //默认增
             model.setOrderType(MapUtils.getString(column.getAttributes(), "orderBy.type", "ASC"));
             modelList.add(model);
         }
         return modelList;
-
     }
 
 

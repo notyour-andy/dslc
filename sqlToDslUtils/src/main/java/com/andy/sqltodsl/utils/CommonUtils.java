@@ -10,38 +10,8 @@ import java.util.*;
 public class CommonUtils {
 
     public static void main(String[] args) {
-        test();
+
     }
-
-
-    public static void test(){
-        Map<String, String> map = new HashMap<>();
-        map.put("业务档案", "Levent=1&GUID=98304a90-ac73-418c-a066-076aa6b80626&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_BUSINESS&IsSubitemtype=0");
-        map.put("文书档案", "Levent=1&GUID=3fb9eac0-4ea8-4a35-9018-6b6d81b1a499&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_TRADITIONMETHOD&IsSubitemtype=1");
-        map.put("传统方法整理", "Levent=2&GUID=2172a5f4-06a4-4810-8e7c-68a24f409fab&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_TRADITIONMETHOD&IsSubitemtype=0");
-        map.put("简化方法整理", "Levent=2&GUID=cfd5985a-c8eb-494f-a2a1-9ced50c5a8a1&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_SIMPLIFYITEM&IsSubitemtype=0");
-        map.put("标准档案", "Levent=1&GUID=5f39d523-0ac7-4bc0-83ef-1446bad4dcb5&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=1&TableName=T_DA_SIMPLIFYITEM&IsSubitemtype=0");
-        map.put("会计档案", "Levent=1&GUID=0094bafa-ae7c-4cef-9c44-0af6e9c8ab31&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_ACCOUNTINGITEM&IsSubitemtype=0");
-        map.put("特种载体", "Levent=1&GUID=27d8519d-3f6e-4b93-a866-1c30b8770a2d&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_PHOTOSFILE&IsSubitemtype=1");
-        map.put("实物档案", "Levent=2&GUID=beb90342-a0f4-4233-b2e9-5386ad3b56e5&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_PHYSICALITEM&IsSubitemtype=0");
-        map.put("照片档案", "Levent=2&GUID=aefd7f32-5354-4331-9347-08e43e081d73&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_PHOTOSFILE&IsSubitemtype=0");
-        map.put("科技档案", "Levent=1&GUID=666fb6f7-f517-4445-8d40-08403e87f0e3&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_EQUIPMENT&IsSubitemtype=1");
-        map.put("设备档案", "Levent=2&GUID=3acc7f62-2ce6-40aa-aa94-814246c8b553&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_EQUIPMENT&IsSubitemtype=0");
-        map.put("设备档案子级", "Levent=2&GUID=3acc7f62-2ce6-40aa-aa94-814246c8b553&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_EQUIPMENT&IsSubitemtype=0&ProjectID=18e265d2-fb5e-457d-91af-e44afa8538cf");
-        map.put("基建档案", "Levent=2&GUID=0fb126a9-d696-452e-b1ce-d5f161f7f44d&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_INFRASTRUCTURE&IsSubitemtype=0");
-        map.put("基建档案子级", "Levent=2&GUID=0fb126a9-d696-452e-b1ce-d5f161f7f44d&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_INFRASTRUCTURE&IsSubitemtype=0&ProjectID=e8c57f74-9e1e-4491-ab72-c3d48830eb5a");
-        map.put("环境科学研究", "Levent=1&GUID=b3dc65a9-9a1d-4d12-b391-5951883628c6&CompanyID=43f00833-586d-4f53-81c7-1e10f528ca9c&ISEdit=0&TableName=T_DA_SIMPLIFYITEM&IsSubitemtype=0");
-        for (Map.Entry<String, String> entry : map.entrySet()) {
-            System.out.println(entry.getKey()+ "---------");
-            for (String ele : entry.getValue().split("&")) {
-                String[] split = ele.split("=");
-                System.out.printf("%s: %s%n", split[0], split[1]);
-            }
-        }
-    }
-
-
-
 
     /**
     *将表达式转换为指定模式，便于后续操作
@@ -119,7 +89,7 @@ public class CommonUtils {
     *@return 中缀表达式树
     *@date 2022/11/15
     */
-    public static TreeNode makeExprTree(String expr, List<Map<String,Object>> condtionMapList){
+    public static TreeNode makeExprTree(String expr, List<Map<String,Object>> conditionMapList){
         Stack<TreeNode> stack = new Stack<>();
         for (char chr :expr.toCharArray()){
             TreeNode node = null;
@@ -128,14 +98,14 @@ public class CommonUtils {
                 if (stack.size() < 2){
                     throw new RuntimeException("表达式有误");
                 }
-                TreeNode rihgt = stack.pop();
+                TreeNode right = stack.pop();
                 TreeNode left = stack.pop();
-                node = new TreeNode(1, null, null, Operator.getByChr(chr).getMark(), 1, left, rihgt);
+                node = new TreeNode(1, null, null, Operator.getByChr(chr).getMark(), 1, left, right);
             }else{
                 int index = (int) chr - '0';
                 //表达式
-                Preconditions.checkArgument(index < condtionMapList.size() , String.format("{%s}:index大小范围有误",chr));
-                Map<String, Object> dataMap = condtionMapList.get(index);
+                Preconditions.checkArgument(index < conditionMapList.size() , String.format("{%s}:index大小范围有误",chr));
+                Map<String, Object> dataMap = conditionMapList.get(index);
                 String val = MapUtils.getString(dataMap, "value");
                 //参数类型
                 int valType = 0;

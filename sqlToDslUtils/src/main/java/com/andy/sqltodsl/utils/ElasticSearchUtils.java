@@ -26,21 +26,26 @@ public class ElasticSearchUtils {
     public static void main(String[] args) {
         String sql = "select * from text where id = 123 and time > 1 and time < 3 or state = 0 group by time, state, c limit 10";
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.query(parseQuerySqlToDsl(sql));
+        //解析where语句
+        parseWhere(sql, searchSourceBuilder);
         //order
-        List<OrderColumnModel> orderColumnList = SqlUtils.getOrderColumnList(sql);
-        if (CollectionUtils.isNotEmpty(orderColumnList)){
-            for (OrderColumnModel model : orderColumnList) {
-                searchSourceBuilder.sort(model.getName(), SortOrder.fromString(model.getOrderType()));
-            }
-        }
+        parseOrderBy(sql, searchSourceBuilder);
         //limit
-        Map<String, Object> argMap = SqlUtils.getLimitArgMap(sql);
-        if (MapUtils.isNotEmpty(argMap)){
-            searchSourceBuilder.from(MapUtils.getInteger(argMap, "from"));
-            searchSourceBuilder.size(MapUtils.getInteger(argMap, "size"));
-        }
+        parseLimit(sql, searchSourceBuilder);
         //group by
+        parseGroupBy(sql, searchSourceBuilder);
+        System.out.println(searchSourceBuilder);
+    }
+
+    /**
+     * 解析group by语句
+     * @author Andy
+     * @date 2023/1/19 22:03
+     * @param sql sql语句
+     * @param searchSourceBuilder dsl语句
+     **/
+    private static void parseGroupBy(String sql, SearchSourceBuilder searchSourceBuilder) {
+        //获取group的字段
         List<String> fieldList = SqlUtils.getGroupByFieldList(sql);
         if (CollectionUtils.isNotEmpty(fieldList)){
             TermsAggregationBuilder last = null;
@@ -48,19 +53,69 @@ public class ElasticSearchUtils {
             for (String field : fieldList) {
                 TermsAggregationBuilder aggBuilder = AggregationBuilders.terms("groupBy" + field).field(field);
                 if (!Objects.isNull(last)){
+                    //如果last非空, 则说明是子聚合
                     last.subAggregation(aggBuilder);
                 }
                 if (fieldList.indexOf(field) == 0){
+                    //如果是列表第一个字段, 则是最顶层聚合
                     first = aggBuilder;
                 }
                 last = aggBuilder;
             }
             searchSourceBuilder.aggregation(first);
         }
-        System.out.println(searchSourceBuilder);
+    }
+
+    /**
+     * 解析limit语句
+     * @author Andy
+     * @date 2023/1/19 21:45
+     * @param sql 语句
+     * @param searchSourceBuilder dsl语句
+     **/
+    private static void parseLimit(String sql, SearchSourceBuilder searchSourceBuilder) {
+        Map<String, Object> argMap = SqlUtils.getLimitArgMap(sql);
+        if (MapUtils.isNotEmpty(argMap)){
+            searchSourceBuilder.from(MapUtils.getInteger(argMap, "from"));
+            searchSourceBuilder.size(MapUtils.getInteger(argMap, "size"));
+        }
     }
 
 
+    /**
+     * 解析order by语句
+     * @author Andy
+     * @date 2023/1/19 21:32
+     * @param sql sql语句
+     * @param searchSourceBuilder 查询语句builder
+     **/
+    private static void parseOrderBy(String sql, SearchSourceBuilder searchSourceBuilder) {
+        List<OrderColumnModel> orderColumnList = SqlUtils.getOrderColumnList(sql);
+        if (CollectionUtils.isNotEmpty(orderColumnList)){
+            for (OrderColumnModel model : orderColumnList) {
+                searchSourceBuilder.sort(model.getName(), SortOrder.fromString(model.getOrderType()));
+            }
+        }
+    }
+
+
+    /**
+     * 解析where语句
+     * @author Andy
+     * @date 2023/1/19 22:06
+     * @param sql sql语句
+     * @param searchSourceBuilder dsl语句
+     **/
+    public static void parseWhere(String sql, SearchSourceBuilder searchSourceBuilder){
+        searchSourceBuilder.query(parseQuerySqlToDsl(sql));
+    }
+
+    /**
+     * 将where语句转换成dsl语句
+     * @author Andy
+     * @date 2023/1/19 22:15
+     * @param sql sql语句
+     **/
     public static BoolQueryBuilder parseQuerySqlToDsl(String sql){
         String expr = SqlUtils.getWhereStatement(sql).replace(" ", "");
         List<String> condList = SqlUtils.parseQueryConditions(sql);
@@ -71,6 +126,15 @@ public class ElasticSearchUtils {
     }
 
 
+    /**
+     * 解析where语句
+     * @author Andy
+     * @date 2023/1/19 22:16
+     * @param treeNode 树节点
+     * @param boolQueryBuilder bool语句
+     * @param operator 操作符
+     * @param rangeQueryList range语句
+     **/
     private static BoolQueryBuilder transTreeToDsl(TreeNode treeNode, BoolQueryBuilder boolQueryBuilder, String operator, List<RangeQueryBuilder> rangeQueryList){
         if (treeNode != null){
             if (Objects.equals(treeNode.type, 1)){
@@ -137,6 +201,14 @@ public class ElasticSearchUtils {
         }
     }
 
+
+    /**
+     * 判断是否是新的操作符
+     * @author Andy
+     * @date `2023/1/19 21:18
+     * @param initOp 初始操作符
+     * @param currentOp 当前操作符
+     **/
     private static boolean isNew(String initOp, String currentOp){
         //如果操作符部位null, 并且前后操作符不等，则使用新的bool查询
         return !Objects.isNull(initOp) && !Objects.equals(initOp, currentOp);
