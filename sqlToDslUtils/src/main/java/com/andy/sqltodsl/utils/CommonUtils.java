@@ -4,6 +4,7 @@ import com.andy.sqltodsl.bean.enums.Operator;
 import com.andy.sqltodsl.bean.models.TreeNode;
 import com.google.inject.internal.util.Preconditions;
 import org.apache.commons.collections4.MapUtils;
+import org.jsoup.internal.StringUtil;
 
 import java.util.*;
 
@@ -104,7 +105,7 @@ public class CommonUtils {
             }else{
                 int index = (int) chr - '0';
                 //表达式
-                Preconditions.checkArgument(index < conditionMapList.size() , String.format("{%s}:index大小范围有误",chr));
+                Preconditions.checkArgument(index < conditionMapList.size() , String.format("{%s}:index大小范围有误, 请检查sql语法是否正确",chr));
                 Map<String, Object> dataMap = conditionMapList.get(index);
                 String val = MapUtils.getString(dataMap, "value");
                 //参数类型
@@ -118,5 +119,21 @@ public class CommonUtils {
             stack.push(node);
         }
         return stack.pop();
+    }
+
+    /**
+     *返回object对应的整型值
+     *@author Andy
+     *@date 2023/2/2
+     */
+    public static Integer getIntegerVal(Object obj){
+        if (!Objects.isNull(obj)){
+            if (StringUtil.isNumeric(obj.toString())){
+                return Integer.parseInt(obj.toString());
+            }else{
+                throw new IllegalArgumentException("范围查询参数有误");
+            }
+        }
+        return null;
     }
 }

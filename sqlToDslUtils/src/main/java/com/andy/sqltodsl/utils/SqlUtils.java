@@ -4,6 +4,7 @@ import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLLimit;
 import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
 import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
@@ -16,6 +17,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class SqlUtils {
 
@@ -26,12 +28,8 @@ public class SqlUtils {
     private static final String OPERATOR = "operator";
 
     public static void main(String[] args) {
-        String sql = "select g from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
-        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
-//        SQLSelectGroupByClause groupBy = queryBlock.getGroupBy();
-        for (SQLExpr item : queryBlock.getGroupBy().getItems()) {
-            System.out.println(item.toString());
-        }
+        String sql = "select A,C,D from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
+        List<String> selectList = SqlUtils.getSelectList(sql);
     }
 
 
@@ -63,10 +61,37 @@ public class SqlUtils {
     public static List<String> getGroupByFieldList(String sql){
         List<String> resultList = new ArrayList<>();
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
-        for (SQLExpr item : queryBlock.getGroupBy().getItems()) {
-            resultList.add(item.toString());
+        if (!Objects.isNull(queryBlock.getGroupBy())) {
+            for (SQLExpr item : queryBlock.getGroupBy().getItems()) {
+                resultList.add(item.toString());
+            }
         }
         return resultList;
+    }
+
+    /**
+    *获取查询的字段
+    *@author Andy
+    *@date 2023/2/2
+    */
+    public static List<String> getSelectList(String sql){
+        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
+        List<SQLSelectItem> selectList = queryBlock.getSelectList();
+        if (CollectionUtils.isNotEmpty(selectList)){
+            //如果含有*,且只能只含有*
+            List<String> fieldList = selectList.stream().map(ele -> ele.getExpr().toString()).collect(Collectors.toList());
+            if (fieldList.contains("*")){
+                if (fieldList.size() == 1){
+                    return Collections.emptyList();
+                }else{
+                    throw new IllegalArgumentException("查询字段有误");
+                }
+            }
+            return fieldList;
+        }else{
+            throw new IllegalArgumentException("查询字段为空");
+        }
+
     }
 
     public static MySqlSelectQueryBlock getQueryBlock(String sql){
@@ -81,9 +106,9 @@ public class SqlUtils {
         SQLStatement sqlStatement = parser.parseStatement();
         MySqlSchemaStatVisitor visitor = new MySqlSchemaStatVisitor();
         sqlStatement.accept(visitor);
-        for (TableStat.Column column : visitor.getColumns()) {
-            System.out.println(column);
-        }
+//        for (TableStat.Column column : visitor.getColumns()) {
+//            System.out.println(column);
+//        }
         return visitor;
     }
 
@@ -125,10 +150,11 @@ public class SqlUtils {
         for (TableStat.Condition con : visitor.getConditions()) {
             Class<?> aClass = con.getValues().get(0).getClass();
             String fullName = getFieldName(tableNameList, con);
-            if (Objects.equals(aClass.getName(), "java.lang.String")) {
-                resultSet.add(fullName+ con.getOperator() +  "'" + con.getValues().get(0) + "'");
-            }else{
-                resultSet.add(fullName + con.getOperator() + con.getValues().get(0));
+            //Condition对于同一运算符的多个值会存在列表里 textid = (123, 234)
+            for (Object value : con.getValues()) {
+                //字符串带双引号
+                Object realVal = Objects.equals(aClass.getName(), "java.lang.String") ? "'" + value + "'" : value;
+                resultSet.add(fullName + con.getOperator() + realVal);
             }
         }
         return resultSet;
@@ -167,11 +193,13 @@ public class SqlUtils {
         List<String> tableNameList = getTableNameList(visitor);
         for (TableStat.Condition con : visitor.getConditions()) {
             Class<?> aClass = con.getValues().get(0).getClass();
-            dataMap = new HashMap<>();
-            dataMap.put(FIELD, getFieldName(tableNameList, con));
-            dataMap.put(VALUE, Objects.equals(aClass.getName(), "java.lang.String") ? "'" + con.getValues().get(0) + "'" : con.getValues().get(0));
-            dataMap.put(OPERATOR, con.getOperator());
-            resultList.add(dataMap);
+            for (Object value : con.getValues()) {
+                dataMap = new HashMap<>();
+                dataMap.put(FIELD, getFieldName(tableNameList, con));
+                dataMap.put(VALUE, Objects.equals(aClass.getName(), "java.lang.String") ? "'" + value + "'" : value);
+                dataMap.put(OPERATOR, con.getOperator());
+                resultList.add(dataMap);
+            }
         }
         return resultList;
     }
