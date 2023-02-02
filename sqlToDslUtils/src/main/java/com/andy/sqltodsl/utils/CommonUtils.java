@@ -23,7 +23,7 @@ public class CommonUtils {
     */
     public static String getPattens(String expr, List<String> conditionList){
         for (String con : conditionList) {
-            expr = expr.replace(con, String.valueOf(conditionList.indexOf(con)));
+            expr = expr.replaceFirst(con, String.valueOf(conditionList.indexOf(con)));
         }
         expr = expr.replace(Operator.OR.getMark(), Operator.OR.getChr().toString());
         expr = expr.replace(Operator.AND.getMark(), Operator.AND.getChr().toString());

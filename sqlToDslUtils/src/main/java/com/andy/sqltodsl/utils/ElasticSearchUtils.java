@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public class ElasticSearchUtils {
 
     public static void main(String[] args) {
-        String sql = "select A,B,C from text where info.id = 1 and info.name = '123' and info.son.state = 1 and type = 1 or info.content= '123' ";
+        String sql = "select A,B,C from text where id=1 and id=12";
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         //解析where语句
         parseWhere(sql, searchSourceBuilder);
