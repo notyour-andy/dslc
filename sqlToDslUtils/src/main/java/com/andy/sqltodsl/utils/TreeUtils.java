@@ -21,12 +21,10 @@ public class TreeUtils {
      *@param array 全部实体数据，
      *@date 2022/9/28
      */
-    public static JSONArray getChildrenList(String pid, JSONArray array, String pidName, String idName, String childname) {
-        List<JSONObject> childrenList = array.stream().filter(m -> {
-            return Objects.equals(((JSONObject)m).getString(pidName), pid);
-        }).map(
+    public static JSONArray getChildrenList(String pid, JSONArray array, String pidName, String idName, String childName) {
+        List<JSONObject> childrenList = array.stream().filter(m -> Objects.equals(((JSONObject)m).getString(pidName), pid)).map(
                 (m) -> {
-                    ((JSONObject) m).put(childname, getChildrenList(((JSONObject) m).getString(idName), array, pidName, idName, childname));
+                    ((JSONObject) m).put(childName, getChildrenList(((JSONObject) m).getString(idName), array, pidName, idName, childName));
                     return (JSONObject) m;
                 }
         ).collect(Collectors.toList());

@@ -9,6 +9,7 @@ import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlSchemaStatVisitor;
+import com.alibaba.druid.sql.parser.EOFParserException;
 import com.alibaba.druid.stat.TableStat;
 import com.alibaba.druid.util.JdbcConstants;
 import com.andy.sqltodsl.bean.models.OrderColumnModel;
@@ -28,9 +29,11 @@ public class SqlUtils {
     private static final String OPERATOR = "operator";
 
     public static void main(String[] args) {
-        String sql = "select A,C,D from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
+        String sql = "select * from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
         List<String> selectList = SqlUtils.getSelectList(sql);
+        System.out.println(selectList);
     }
+
 
 
     /**
@@ -78,16 +81,22 @@ public class SqlUtils {
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
         List<SQLSelectItem> selectList = queryBlock.getSelectList();
         if (CollectionUtils.isNotEmpty(selectList)){
-            //如果含有*,且只能只含有*
-            List<String> fieldList = selectList.stream().map(ele -> ele.getExpr().toString()).collect(Collectors.toList());
-            if (fieldList.contains("*")){
-                if (fieldList.size() == 1){
-                    return Collections.emptyList();
-                }else{
-                    throw new IllegalArgumentException("查询字段有误");
+            //如果含有*,且只能只含有* 这里的filter:当查询字段为空, queryBlock会将整条sql语句作为查询字段, 去除这种情况
+            List<String> fieldList = selectList.stream().map(ele -> ele.getExpr().toString())
+                                                        .filter(ele -> !(ele.contains("SELECT") && ele.contains("FROM")))
+                                                        .collect(Collectors.toList());
+            if (CollectionUtils.isNotEmpty(fieldList)) {
+                if (fieldList.contains("*")) {
+                    if (fieldList.size() == 1) {
+                        return Collections.emptyList();
+                    } else {
+                        throw new IllegalArgumentException("查询字段有误");
+                    }
                 }
+                return fieldList;
+            }else{
+                throw new IllegalArgumentException("查询字段为空");
             }
-            return fieldList;
         }else{
             throw new IllegalArgumentException("查询字段为空");
         }
@@ -106,9 +115,6 @@ public class SqlUtils {
         SQLStatement sqlStatement = parser.parseStatement();
         MySqlSchemaStatVisitor visitor = new MySqlSchemaStatVisitor();
         sqlStatement.accept(visitor);
-//        for (TableStat.Column column : visitor.getColumns()) {
-//            System.out.println(column);
-//        }
         return visitor;
     }
 
@@ -126,6 +132,7 @@ public class SqlUtils {
         OrderColumnModel model;
         MySqlSchemaStatVisitor visitor = getVisitor(sql);
         for (TableStat.Column column : visitor.getOrderByColumns()) {
+
             model = new OrderColumnModel();
             model.setName(column.getName());
             //默认增
@@ -192,8 +199,8 @@ public class SqlUtils {
         MySqlSchemaStatVisitor visitor = getVisitor(sql);
         List<String> tableNameList = getTableNameList(visitor);
         for (TableStat.Condition con : visitor.getConditions()) {
-            Class<?> aClass = con.getValues().get(0).getClass();
             for (Object value : con.getValues()) {
+                Class<?> aClass = value.getClass();
                 dataMap = new HashMap<>();
                 dataMap.put(FIELD, getFieldName(tableNameList, con));
                 dataMap.put(VALUE, Objects.equals(aClass.getName(), "java.lang.String") ? "'" + value + "'" : value);
@@ -231,14 +238,23 @@ public class SqlUtils {
     *@date 2022/11/15
     */
     public static String getWhereStatement(String sql){
-
-        List<SQLStatement> sqlStatementList = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        List<SQLStatement> sqlStatementList;
+        try {
+            sqlStatementList = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL);
+        }catch (EOFParserException e){
+            throw new RuntimeException("sql语句有误");
+        }
         Preconditions.checkArgument(Objects.equals(sqlStatementList.size(), 1), "只支持单WHERE条件查询");
         MySqlSelectQueryBlock mysqlSelectQueryBlock = ((MySqlSelectQueryBlock) (((SQLSelectStatement) sqlStatementList.get(0)).getSelect()).getQuery());
-        String stm = mysqlSelectQueryBlock.getWhere().toString();
-        //去除多余的符号
-        stm = stm.replace("\n", "");
-        stm = stm.replace("\t", "");
+        SQLExpr sqlExpr = mysqlSelectQueryBlock.getWhere();
+        String stm = "";
+        if (!Objects.isNull(sqlExpr)) {
+            stm = sqlExpr.toString();
+            //去除多余的符号
+            stm = stm.replace("\n", "");
+            stm = stm.replace("\t", "");
+        }
         return stm;
+
     }
 }

@@ -37,22 +37,25 @@ public class QueryBuilderFactory {
             return QueryBuilders.matchPhraseQuery(node.getField(), node.getValue());
         }else if (Objects.equals(type, QueryType.EXIST_RANGE) || Objects.equals(type, QueryType.NOT_EXIST_RANGE)) {
             //range查询
-            RangeQueryBuilder builder = null;
+            RangeQueryBuilder builder;
             if (Objects.equals(type, QueryType.NOT_EXIST_RANGE)) {
+                //不存在, 则新建加入列表
                 builder = QueryBuilders.rangeQuery(node.getField());
                 rangeList.add(builder);
             } else if (Objects.equals(type, QueryType.EXIST_RANGE)) {
+                //存在, 则从列表中塞选出来
                 Optional<RangeQueryBuilder> optional = rangeList.stream()
-                        .filter(ele -> Objects.equals(ele.fieldName(), node.getField()))
-                        .findAny();
+                                                                .filter(ele -> Objects.equals(ele.fieldName(), node.getField()))
+                                                                .findAny();
                 if (optional.isPresent()) {
                     builder = optional.get();
-
                 } else {
                     throw new RuntimeException("type有误");
                 }
+            }else{
+                throw new RuntimeException("未知的处理类型");
             }
-            ElasticSearchUtils.setRangeQueryBuilder(builder, node.getOperator(), Objects.equals(node.getValType(), 0) ? Integer.parseInt(node.getValue()) : node.getValue());
+            ElasticSearchUtils.setRangeQueryBuilder(builder, node.getOperator(), Objects.equals(node.getValType(), 0) ? Long.parseLong(node.getValue()) : node.getValue());
             return builder;
         }else{
             throw new IllegalArgumentException(String.format("不存在的类型: %s", type));

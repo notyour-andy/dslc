@@ -11,8 +11,8 @@ import com.andy.sqltodsl.utils.ElasticSearchUtils;
 public class MainTest {
 
     public static void main(String[] args) {
-        String sql = "select * from z_test where a = 1 and b.dd = '2' or (c = '3' or (d = '4' and e = '5'))";
-        String dsl = ElasticSearchUtils.parseQuerySqlToDsl(sql).toString();
+        String sql = "select * from z_test where a = '1,2,3,4,5' and b.dd = '2' or (c = '3' or (d = '4' and e = '5'))";
+        String dsl = ElasticSearchUtils.transSqlToDsl(sql);
         System.out.println(dsl);
     }
 }

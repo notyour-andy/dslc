@@ -16,7 +16,6 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,7 +26,18 @@ import java.util.stream.Collectors;
 public class ElasticSearchUtils {
 
     public static void main(String[] args) {
-        String sql = "select A,B,C from text where id=1 and id=12";
+        String sql = "select * from text where firstrecepttimeTimestrap > 1654012800000 and firstrecepttimeTimestrap < 1656518400000 group by reasoncontrolfind";
+        String dsl = transSqlToDsl(sql);
+        System.out.println(dsl);
+    }
+
+
+    /**
+    *sql转化dsl
+    *@author Andy
+    *@date 2023/2/3
+    */
+    public static String transSqlToDsl(String sql){
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         //解析where语句
         parseWhere(sql, searchSourceBuilder);
@@ -39,7 +49,7 @@ public class ElasticSearchUtils {
         parseGroupBy(sql, searchSourceBuilder);
         //select list
         parseSelectList(sql, searchSourceBuilder);
-        System.out.println(searchSourceBuilder);
+        return searchSourceBuilder.toString();
     }
 
     private static void parseSelectList(String sql, SearchSourceBuilder searchSourceBuilder) {
@@ -63,7 +73,7 @@ public class ElasticSearchUtils {
             TermsAggregationBuilder last = null;
             TermsAggregationBuilder first = null;
             for (String field : fieldList) {
-                TermsAggregationBuilder aggBuilder = AggregationBuilders.terms("groupBy" + field).field(field);
+                TermsAggregationBuilder aggBuilder = AggregationBuilders.terms("groupBy" + field.substring(0,1).toUpperCase(Locale.ROOT) + field.substring(1)).field(field);
                 if (!Objects.isNull(last)){
                     //如果last非空, 则说明是子聚合
                     last.subAggregation(aggBuilder);
@@ -130,11 +140,18 @@ public class ElasticSearchUtils {
      **/
     public static BoolQueryBuilder parseQuerySqlToDsl(String sql){
         String expr = SqlUtils.getWhereStatement(sql).replace(" ", "");
-        List<String> condList = SqlUtils.parseQueryConditions(sql);
-        List<Map<String, Object>> mapList = SqlUtils.parseQueryConditionsToMapList(sql);
-        String pattern = CommonUtils.getPattens(expr, condList);
-        TreeNode tree = CommonUtils.makeExprTree(CommonUtils.transInfixToSuffixExpr(pattern), mapList);
-        return transTreeToDsl(tree, QueryBuilders.boolQuery(), tree.getValue(), new ArrayList<>(), new ArrayList<>());
+        BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
+        if (StringUtils.isNotBlank(expr)) {
+            //where条件为空
+            List<String> condList = SqlUtils.parseQueryConditions(sql);
+            List<Map<String, Object>> mapList = SqlUtils.parseQueryConditionsToMapList(sql);
+            String pattern = CommonUtils.getPattens(expr, condList);
+            TreeNode tree = CommonUtils.makeExprTree(CommonUtils.transInfixToSuffixExpr(pattern), mapList);
+            return transTreeToDsl(tree, queryBuilder, tree.getValue(), new ArrayList<>(), new ArrayList<>());
+        }else{
+            queryBuilder.must().add(QueryBuilders.matchAllQuery());
+        }
+        return queryBuilder;
     }
 
 
@@ -170,7 +187,7 @@ public class ElasticSearchUtils {
                     //发生改变，则使用新的bool
                     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
                     List<RangeQueryBuilder> rangeList = new ArrayList<>();
-                    List<TreeNode> sonPathSet = new ArrayList<TreeNode>();
+                    List<TreeNode> sonPathSet = new ArrayList<>();
                     transTreeToDsl(treeNode.left, boolQuery, treeNode.value, rangeList, sonPathSet);
                     transTreeToDsl(treeNode.right, boolQuery, treeNode.value, rangeList, sonPathSet);
                     if (CollectionUtils.isNotEmpty(sonPathSet)){
@@ -208,7 +225,7 @@ public class ElasticSearchUtils {
         //为参数树赋值
         Map<String,Object> conditionMap = new HashMap<>();
         nestedNodeList.forEach(ele -> {
-            Object val = Objects.equals(ele.getValType(), 0) ? Integer.parseInt(ele.getValue()) : ele.getValue();
+            Object val = Objects.equals(ele.getValType(), 0) ? Long.parseLong(ele.getValue()) : ele.getValue();
             conditionMap.put(ele.getField(), val);
         });
         //赋值
@@ -249,7 +266,6 @@ public class ElasticSearchUtils {
                 //如果没有值，则说明属于nest字段
                 builderList.add(QueryBuilders.nestedQuery(field, constructNestQuery(jsonObject.getJSONArray("children"), QueryBuilders.boolQuery(), operator, nestedNodeList), ScoreMode.Avg));
             }
-
         }
         return boolQuery;
     }
@@ -261,7 +277,7 @@ public class ElasticSearchUtils {
      */
     public static JSONArray initFieldTree(Set<String> keySet){
         JSONArray jsonArray = new JSONArray();
-        JSONObject json = null;
+        JSONObject json;
         Set<String> existedSet = new HashSet<>();
         for (String key : keySet) {
             String lastName = "";
@@ -314,9 +330,9 @@ public class ElasticSearchUtils {
         //如果存在多个范围查询，要考虑求交集的情况
         // >= > 求交集
         // <= < 求交集
-        Integer minVal = CommonUtils.getIntegerVal(builder.from());
-        Integer maxVal = CommonUtils.getIntegerVal(builder.to());
-        Integer realVal = CommonUtils.getIntegerVal(value);
+        Long minVal = CommonUtils.getLongVal(builder.from());
+        Long maxVal = CommonUtils.getLongVal(builder.to());
+        Long realVal = CommonUtils.getLongVal(value);
         if (!Objects.isNull(realVal)) {
             if (Objects.equals(operator, ">=")) {
                 //>= minVal
@@ -377,7 +393,6 @@ public class ElasticSearchUtils {
      *@date 2022/11/29
      */
     private static QueryType parseVal(TreeNode treeNode, List<RangeQueryBuilder> rangeQueryList){
-
         if (Objects.equals(treeNode.getOperator(), "=")) {
             return Objects.equals(treeNode.getValType(), 0) ? QueryType.EQ_INTEGER : QueryType.EQ_STR;
         } else {

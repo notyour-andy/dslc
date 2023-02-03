@@ -93,7 +93,7 @@ public class CommonUtils {
     public static TreeNode makeExprTree(String expr, List<Map<String,Object>> conditionMapList){
         Stack<TreeNode> stack = new Stack<>();
         for (char chr :expr.toCharArray()){
-            TreeNode node = null;
+            TreeNode node;
             if (Operator.getAllChr().contains(chr)){
                 //逻辑符号
                 if (stack.size() < 2){
@@ -126,10 +126,10 @@ public class CommonUtils {
      *@author Andy
      *@date 2023/2/2
      */
-    public static Integer getIntegerVal(Object obj){
+    public static Long getLongVal(Object obj){
         if (!Objects.isNull(obj)){
             if (StringUtil.isNumeric(obj.toString())){
-                return Integer.parseInt(obj.toString());
+                return Long.parseLong(obj.toString());
             }else{
                 throw new IllegalArgumentException("范围查询参数有误");
             }
