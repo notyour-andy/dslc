@@ -6,7 +6,10 @@ import com.google.inject.internal.util.Preconditions;
 import org.apache.commons.collections4.MapUtils;
 import org.jsoup.internal.StringUtil;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Stack;
 
 public class CommonUtils {
 
@@ -105,7 +108,7 @@ public class CommonUtils {
             }else{
                 int index = (int) chr - '0';
                 //表达式
-                Preconditions.checkArgument(index < conditionMapList.size() , String.format("{%s}:index大小范围有误, 请检查sql语法是否正确",chr));
+                Preconditions.checkArgument(index < conditionMapList.size() , String.format("'%s' 附近存在语法错误, 请检查sql语句",chr));
                 Map<String, Object> dataMap = conditionMapList.get(index);
                 String val = MapUtils.getString(dataMap, "value");
                 //参数类型
@@ -136,4 +139,7 @@ public class CommonUtils {
         }
         return null;
     }
+
+
+
 }

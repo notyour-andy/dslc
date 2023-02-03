@@ -27,7 +27,7 @@ public class ElasticSearchUtils {
 
     public static void main(String[] args) {
         String sql = "select * from text where firstrecepttimeTimestrap > 1654012800000 and firstrecepttimeTimestrap < 1656518400000 group by reasoncontrolfind";
-        String dsl = transSqlToDsl(sql);
+        String dsl = convertSqlToDsl(sql);
         System.out.println(dsl);
     }
 
@@ -37,7 +37,7 @@ public class ElasticSearchUtils {
     *@author Andy
     *@date 2023/2/3
     */
-    public static String transSqlToDsl(String sql){
+    public static String convertSqlToDsl(String sql){
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         //解析where语句
         parseWhere(sql, searchSourceBuilder);
@@ -143,7 +143,7 @@ public class ElasticSearchUtils {
         BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
         if (StringUtils.isNotBlank(expr)) {
             //where条件为空
-            List<String> condList = SqlUtils.parseQueryConditions(sql);
+            List<String> condList = SqlUtils.parseQueryCondition(sql);
             List<Map<String, Object>> mapList = SqlUtils.parseQueryConditionsToMapList(sql);
             String pattern = CommonUtils.getPattens(expr, condList);
             TreeNode tree = CommonUtils.makeExprTree(CommonUtils.transInfixToSuffixExpr(pattern), mapList);
@@ -200,7 +200,7 @@ public class ElasticSearchUtils {
             }else{
                 //表达式节点
                 if (treeNode.getField().contains(".")){
-                    //nest查询
+                    //nested查询, 先加入列表, 出域后统一处理
                     nestedNodeList.add(treeNode);
                 }else {
                     //判断与,或
@@ -218,6 +218,11 @@ public class ElasticSearchUtils {
         return boolQueryBuilder;
     }
 
+    /**
+     *构造BoolQueryBuilder
+     *@author Andy
+     *@date 2022/11/3
+     */
     private static BoolQueryBuilder constructNestQuery(List<TreeNode> nestedNodeList,  BoolQueryBuilder boolQueryBuilder, String operator) {
         Set<String> pathSet = nestedNodeList.stream().map(TreeNode::getField).collect(Collectors.toSet());
         //初始化参数树

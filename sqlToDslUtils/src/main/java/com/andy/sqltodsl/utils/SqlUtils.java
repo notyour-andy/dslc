@@ -4,6 +4,7 @@ import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLLimit;
 import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
 import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
 import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
@@ -22,11 +23,6 @@ import java.util.stream.Collectors;
 
 public class SqlUtils {
 
-    private static final String FIELD = "field";
-
-    private static final String VALUE = "value";
-
-    private static final String OPERATOR = "operator";
 
     public static void main(String[] args) {
         String sql = "select * from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
@@ -150,84 +146,35 @@ public class SqlUtils {
      * @param sql 待解析sql
      * @return conditions set
      **/
-    public static List<String> parseQueryConditions(String sql){
-        List<String> resultSet = new ArrayList<>();
-        MySqlSchemaStatVisitor visitor = getVisitor(sql);
-        List<String> tableNameList = getTableNameList(visitor);
-        for (TableStat.Condition con : visitor.getConditions()) {
-            Class<?> aClass = con.getValues().get(0).getClass();
-            String fullName = getFieldName(tableNameList, con);
-            //Condition对于同一运算符的多个值会存在列表里 textid = (123, 234)
-            for (Object value : con.getValues()) {
-                //字符串带双引号
-                Object realVal = Objects.equals(aClass.getName(), "java.lang.String") ? "'" + value + "'" : value;
-                resultSet.add(fullName + con.getOperator() + realVal);
-            }
+    public static List<String> parseQueryCondition(String sql){
+        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
+        SQLBinaryOpExpr where = (SQLBinaryOpExpr) queryBlock.getWhere();
+        List<String> resultList = new ArrayList<>();
+        if (!Objects.isNull(where)) {
+            TreeUtils.getExprByTree(where, resultList);
         }
-        return resultSet;
+        return resultList;
     }
 
     /**
-    *获取字段名称
-    *@author Andy
-    *@param tableNameList 表名列表
-    *@param con 查询条件
-    *@date 2022/11/30
-    */
-    private static String getFieldName(List<String> tableNameList, TableStat.Condition con) {
-        //单表查询, 普通字段:tableName.fieldName nested字段:field_name.field_name
-        String fullName = con.getColumn().getFullName();
-        String[] nameArray = fullName.split("\\.");
-        if (Objects.equals(nameArray[0], tableNameList.get(0)) && nameArray.length > 1){
-            //等于表名, 则去除
-            fullName = nameArray[1];
-        }
-        return fullName;
-    }
-
-
-    /**
-    *解析查询条件为MapList
-    *@author Andy
-    *@param sql 查询语句
-    *@return mapList
-    *@date 2022/11/15
-    */
+     *解析查询条件为MapList
+     *@author Andy
+     *@param sql 查询语句
+     *@return mapList
+     *@date 2022/11/15
+     */
     public static List<Map<String, Object>> parseQueryConditionsToMapList(String sql){
         List<Map<String, Object>> resultList = new ArrayList<>();
-        Map<String, Object> dataMap;
-        MySqlSchemaStatVisitor visitor = getVisitor(sql);
-        List<String> tableNameList = getTableNameList(visitor);
-        for (TableStat.Condition con : visitor.getConditions()) {
-            for (Object value : con.getValues()) {
-                Class<?> aClass = value.getClass();
-                dataMap = new HashMap<>();
-                dataMap.put(FIELD, getFieldName(tableNameList, con));
-                dataMap.put(VALUE, Objects.equals(aClass.getName(), "java.lang.String") ? "'" + value + "'" : value);
-                dataMap.put(OPERATOR, con.getOperator());
-                resultList.add(dataMap);
-            }
+        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
+        SQLBinaryOpExpr whereExpr = (SQLBinaryOpExpr) queryBlock.getWhere();
+        if (!Objects.isNull(whereExpr)){
+            TreeUtils.getExprMapByTree(whereExpr, resultList);
         }
         return resultList;
     }
 
 
 
-    /**
-    *获得sql中的查询表名
-    *@author Andy
-    *@param visitor 查询器
-    *@return 表名List
-    *@date 2022/11/15
-    */
-    public static List<String> getTableNameList(MySqlSchemaStatVisitor visitor){
-        List<String> resultList = new ArrayList<>();
-        for (TableStat.Name key : visitor.getTables().keySet()) {
-            resultList.add(key.getName());
-        }
-        Preconditions.checkArgument(CollectionUtils.isNotEmpty(resultList), "未解析到表名");
-        return resultList;
-    }
 
 
     /**
