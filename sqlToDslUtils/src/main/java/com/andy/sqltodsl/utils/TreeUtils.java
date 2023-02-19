@@ -1,8 +1,10 @@
 package com.andy.sqltodsl.utils;
 
+import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.andy.sqltodsl.bean.models.TreeNode;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.HashMap;
@@ -60,6 +62,34 @@ public class TreeUtils {
                 }
             }
         }
+    }
+
+    public static TreeNode getExprTreeByExpr(SQLBinaryOpExpr sqlExpr){
+        TreeNode treeNode = new TreeNode();
+        if (!Objects.isNull(sqlExpr)){
+            //非空, 逻辑符号
+            boolean logical = sqlExpr.getOperator().isLogical();
+            if (logical){
+                //逻辑符号型
+                treeNode.setType(1);
+                treeNode.setValue(sqlExpr.getOperator().toString());
+                treeNode.setValType(1);
+                treeNode.setLeft(getExprTreeByExpr((SQLBinaryOpExpr)sqlExpr.getLeft()));
+                treeNode.setRight(getExprTreeByExpr((SQLBinaryOpExpr)sqlExpr.getRight()));
+            }else{
+                //数值型节点, 不用遍历
+                //字段
+                treeNode.setType(0);
+                treeNode.setField(sqlExpr.getLeft().toString());
+                treeNode.setOperator(sqlExpr.getOperator().getName());
+//                sqlExpr.getRight().toString()
+                treeNode.setValue(sqlExpr.getRight().toString());
+                treeNode.setValType(sqlExpr.getRight().toString().startsWith("'") ? 1 : 0);
+//                sqlExpr.get
+//                treeNode.setValType();
+            }
+        }
+        return treeNode;
     }
 
     public static void getExprMapByTree(SQLBinaryOpExpr sqlExpr, List<Map<String, Object>> resultList) {

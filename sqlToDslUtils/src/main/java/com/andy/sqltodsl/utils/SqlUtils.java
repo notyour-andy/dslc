@@ -14,6 +14,7 @@ import com.alibaba.druid.sql.parser.EOFParserException;
 import com.alibaba.druid.stat.TableStat;
 import com.alibaba.druid.util.JdbcConstants;
 import com.andy.sqltodsl.bean.models.OrderColumnModel;
+import com.andy.sqltodsl.bean.models.TreeNode;
 import com.google.inject.internal.util.Preconditions;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -25,9 +26,11 @@ public class SqlUtils {
 
 
     public static void main(String[] args) {
-        String sql = "select * from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
-        List<String> selectList = SqlUtils.getSelectList(sql);
-        System.out.println(selectList);
+//       String sql = "select * from tableA where  (  ( P_getBaseInfo_year > 1996 and P_getBaseInfo_year < 1998 )  )  and  ( status = 'Activity_1ozegsj' or status = 'Activity_1v76epi' or status = 'Activity_0m3dyek' or status = 'Activity_0wzecj7' or status = 'Activity_0sggd7x' or status = 'Activity_1omysls' or status = 'Activity_1gtlsn5' or status = 'Activity_11yh3ig' or status = 'Activity_1a4z8nx' or status = 'Activity_01gt2y7' or status = 'Activity_015z54l' or status = 'Activity_1pusyom' or status = 'Activity_09mmasg' or status = 'Activity_145hkas' )";
+        String sql  = "select * from tableA where  P_getBaseInfo_year > 1996 and P_getBaseInfo_year < 1998 and (status = 'Activity_1ozegsj' or status = 'Activity_1v76epi')";
+        TreeNode treeNode = SqlUtils.parseQueryCondition(sql);
+//        List<String> selectList = (List<String>) treeNode
+//        System.out.println(selectList);
     }
 
 
@@ -146,14 +149,13 @@ public class SqlUtils {
      * @param sql 待解析sql
      * @return conditions set
      **/
-    public static List<String> parseQueryCondition(String sql){
+    public static TreeNode parseQueryCondition(String sql){
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
         SQLBinaryOpExpr where = (SQLBinaryOpExpr) queryBlock.getWhere();
-        List<String> resultList = new ArrayList<>();
         if (!Objects.isNull(where)) {
-            TreeUtils.getExprByTree(where, resultList);
+            return TreeUtils.getExprTreeByExpr(where);
         }
-        return resultList;
+        return null;
     }
 
     /**
