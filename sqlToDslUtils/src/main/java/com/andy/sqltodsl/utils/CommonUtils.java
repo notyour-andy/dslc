@@ -134,7 +134,7 @@ public class CommonUtils {
             if (StringUtil.isNumeric(obj.toString())){
                 return Long.parseLong(obj.toString());
             }else{
-                throw new IllegalArgumentException("范围查询参数有误");
+                throw new IllegalArgumentException("范围查询参数只支持数字型");
             }
         }
         return null;

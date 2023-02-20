@@ -207,8 +207,8 @@ public class ElasticSearchUtils {
                     //确定type
                     QueryType queryType = parseVal(treeNode, rangeQueryList);
                     //如果为或
-                    QueryBuilder queryBuilder = QueryBuilderFactory.generateQueryBuilder(treeNode, queryType, rangeQueryList);
-                    if (!QueryType.isExist(queryType)) {
+                    QueryBuilder queryBuilder = QueryBuilderFactory.generateQueryBuilder(treeNode, queryType, rangeQueryList, operator);
+                    if (!QueryType.isExist(queryType) || (QueryType.isExist(queryType) && Objects.equals(operator, Operator.OR.getMark()))) {
                         builderList.add(queryBuilder);
                     }
                 }
@@ -259,8 +259,8 @@ public class ElasticSearchUtils {
                     //确定type
                     QueryType queryType = parseVal(treeNode, rangeList);
                     //如果为或
-                    QueryBuilder queryBuilder = QueryBuilderFactory.generateQueryBuilder(treeNode, queryType, rangeList);
-                    if (!QueryType.isExist(queryType)) {
+                    QueryBuilder queryBuilder = QueryBuilderFactory.generateQueryBuilder(treeNode, queryType, rangeList, operator);
+                    if (!QueryType.isExist(queryType) || (QueryType.isExist(queryType) && Objects.equals(operator, Operator.OR.getMark()))) {
                         builderList.add(queryBuilder);
                     }
                 }else{
