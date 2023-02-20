@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -50,10 +49,6 @@ public enum Operator {
                      .orElse(null);
     }
 
-    public static boolean contains(String operator){
-        operator = operator.toUpperCase(Locale.ROOT);
-        return getAllChr().contains(operator);
-    }
 
     private final String mark;
 

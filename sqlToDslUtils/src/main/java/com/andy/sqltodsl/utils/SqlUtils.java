@@ -25,9 +25,11 @@ public class SqlUtils {
 
 
     public static void main(String[] args) {
-        String sql = "select * from text where a = '1' and b = '2' or (c = '4' and d = '4' or c = '5' ) group by g, f  limit 10, 10";
-        List<String> selectList = SqlUtils.getSelectList(sql);
-        System.out.println(selectList);
+        String sql = "select count(1) from text where a =  1 ";
+//        List<String> selectList = SqlUtils.getWhereStatement(sql)
+//        System.out.println(selectList);
+        List<String> where = SqlUtils.getSelectList(sql);
+        System.out.println(where);
     }
 
 
@@ -41,14 +43,12 @@ public class SqlUtils {
     public static Map<String, Object> getLimitArgMap(String sql){
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
         SQLLimit limit = queryBlock.getLimit();
-        if(Objects.isNull(limit)){
-            return null;
-        }else{
-            Map<String, Object> returnMap = new HashMap<>();
+        Map<String, Object> returnMap = new HashMap<>();
+        if(!Objects.isNull(limit)){
             returnMap.put("from", Objects.isNull(limit.getOffset()) ? 0 : limit.getOffset().toString());
             returnMap.put("size", limit.getRowCount().toString());
-            return returnMap;
         }
+        return returnMap;
     }
 
     /**

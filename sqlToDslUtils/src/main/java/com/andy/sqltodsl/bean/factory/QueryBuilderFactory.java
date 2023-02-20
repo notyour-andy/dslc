@@ -7,7 +7,6 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -29,9 +28,8 @@ public class QueryBuilderFactory {
     */
     public static QueryBuilder generateQueryBuilder(TreeNode node, QueryType type, List<RangeQueryBuilder> rangeList){
         if (Objects.equals(type, QueryType.EQ_INTEGER)){
-            //整数支持in查询
-            int[] valueList =  Arrays.stream(node.getValue().split(",")).mapToInt(Integer::parseInt).toArray();
-            return QueryBuilders.termsQuery(node.getField(), valueList);
+            //整数
+            return QueryBuilders.matchPhraseQuery(node.getField(), Long.parseLong(node.getValue()));
         }else if (Objects.equals(type, QueryType.EQ_STR)){
             //字符串查询
             return QueryBuilders.matchPhraseQuery(node.getField(), node.getValue());
