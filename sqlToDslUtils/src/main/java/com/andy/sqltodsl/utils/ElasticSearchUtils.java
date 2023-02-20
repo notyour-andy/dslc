@@ -143,11 +143,10 @@ public class ElasticSearchUtils {
         BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
         if (StringUtils.isNotBlank(expr)) {
             //where条件为空
-            List<String> condList = SqlUtils.parseQueryCondition(sql);
-            List<Map<String, Object>> mapList = SqlUtils.parseQueryConditionsToMapList(sql);
-            String pattern = CommonUtils.getPattens(expr, condList);
-            TreeNode tree = CommonUtils.makeExprTree(CommonUtils.transInfixToSuffixExpr(pattern), mapList);
-            return transTreeToDsl(tree, queryBuilder, tree.getValue(), new ArrayList<>(), new ArrayList<>());
+            TreeNode tree = SqlUtils.parseQueryCondition(sql);
+            if (!Objects.isNull(tree)) {
+                return transTreeToDsl(tree, queryBuilder, tree.getValue(), new ArrayList<>(), new ArrayList<>());
+            }
         }else{
             queryBuilder.must().add(QueryBuilders.matchAllQuery());
         }
