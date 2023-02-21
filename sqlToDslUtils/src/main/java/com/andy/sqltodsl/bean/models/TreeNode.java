@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TreeNode {
 
-
     /**
      * type = 0 表达式节点 1：逻辑符号节点
      */

@@ -5,8 +5,8 @@ import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLLimit;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
-import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
-import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
+import com.alibaba.druid.sql.ast.expr.SQLQueryExpr;
+import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlSchemaStatVisitor;
@@ -26,52 +26,41 @@ public class SqlUtils {
 
 
     public static void main(String[] args) {
-//       String sql = "select * from tableA where  (  ( P_getBaseInfo_year > 1996 and P_getBaseInfo_year < 1998 )  )  and  ( status = 'Activity_1ozegsj' or status = 'Activity_1v76epi' or status = 'Activity_0m3dyek' or status = 'Activity_0wzecj7' or status = 'Activity_0sggd7x' or status = 'Activity_1omysls' or status = 'Activity_1gtlsn5' or status = 'Activity_11yh3ig' or status = 'Activity_1a4z8nx' or status = 'Activity_01gt2y7' or status = 'Activity_015z54l' or status = 'Activity_1pusyom' or status = 'Activity_09mmasg' or status = 'Activity_145hkas' )";
-//        String sql  = "select * from tableA where  P_getBaseInfo_year > 1996 and P_getBaseInfo_year < 1998 and (status = 'Activity_1ozegsj' or status = 'Activity_1v76epi')";
-        String sql = "SELECT\n" +
-                "\tGROUP_CONCAT(l.jcxm) as jcxm\n" +
-                "FROM\n" +
-                "\t(\n" +
-                "\tSELECT\n" +
-                "\t\tCONCAT(\n" +
-                "\t\t\tf.ability_name,\n" +
-                "\t\tIF\n" +
-                "\t\t\t(\n" +
-                "\t\t\t\ti.flag_value = NULL,\n" +
-                "\t\t\t\t'',\n" +
-                "\t\t\tIF\n" +
-                "\t\t\t\t(\n" +
-                "\t\t\t\t\tf.ability_name = \"非金属夹杂物\",\n" +
-                "\t\t\t\t\t\"\",\n" +
-                "\t\t\t\tIF\n" +
-                "\t\t\t\t\t(\n" +
-                "\t\t\t\t\t\tf.ability_name = \"钢中非金属夹杂物含量\",\n" +
-                "\t\t\t\t\t\t\"\",\n" +
-                "\t\t\t\t\tIF\n" +
-                "\t\t\t\t\t( f.ability_name = \"非金属夹杂物含量\", \"\", CONCAT( '{', i.flag_value, '}' ) ))))) AS jcxm \n" +
-                "\tFROM\n" +
-                "\t\tzhjc_original_record rd\n" +
-                "\t\tLEFT JOIN zhjc_task_info i ON rd.task_id = i.id\n" +
-                "\t\tLEFT JOIN zhjc_detect_ability_info f ON rd.item_inspection_id = f.id \n" +
-                "\tWHERE\n" +
-                "\t\trd.id IN (\n" +
-                "\t\tSELECT\n" +
-                "\t\t\tsubstring_index( substring_index( rp.ids, ',', b.help_topic_id + 1 ), ',', - 1 ) \n" +
-                "\t\tFROM\n" +
-                "\t\t\tzhjc_original_report rp\n" +
-                "\t\t\tINNER JOIN mysql.help_topic b ON b.help_topic_id < ( length( rp.ids ) - length( REPLACE ( rp.ids, ',', '' )) + 1 ) \n" +
-                "\t\tWHERE\n" +
-                "\t\t\trp.id = #{id}\n" +
-                "\t\t)) AS l ";
-        MySqlSchemaStatVisitor visitor = SqlUtils.getVisitor(sql);
-        List<TableStat.Condition> conditions = visitor.getConditions();
-        for (TableStat.Condition condition : conditions) {
-            System.out.println(1);
-            System.out.println(2);
+        String sql = "SELECT id, (select type from t2 where state = 0 limit 1) FROM (select type from t2 where t2.state = #{state} and t2.type = 1 limit 1) t1 where t1.id = #{159} and  t1.type in (select type from t4 where state = 0)";
+        List<String> resutlList = new ArrayList<>();
+        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
+//        resutlList.addAll(TreeUtils.getCondByWhere(queryBlock.getWhere()));
+        SQLTableSource tbSrc = queryBlock.getFrom();
+//        resutlList = TreeUtils.getCondByFrom(tbSrc);
+//        TreeUtils.getCondBySelect(queryBlock.getSelectList());
+        List<SQLSelectItem> selectList = queryBlock.getSelectList();
+        for (SQLSelectItem sqlSelectItem : selectList) {
+            SQLExpr expr = sqlSelectItem.getExpr();
+            if (expr instanceof SQLQueryExpr){
+                MySqlSelectQueryBlock subQuery = (MySqlSelectQueryBlock) ((SQLQueryExpr) expr).subQuery.getQueryBlock();
+
+            }
         }
-//        List<String> selectList = (List<String>) treeNode
-//        System.out.println(selectList);
+//        TreeUtils.getCondByWhere()
+//        MySqlSchemaStatVisitor visitor = SqlUtils.getVisitor(sql);
+//        for (TableStat.Condition condition : visitor.getConditions()) {
+//            System.out.println(condition);
+//        }
+//        System.out.println(1);
+        for (String s : resutlList) {
+            System.out.println(s);
+        }
+
     }
+
+
+//
+//    public static void getWhereCondition(MySqlSelectQueryBlock queryBlock){
+//        //处理查询
+//        List<String> resultList =
+//    }
+
+
 
 
 
