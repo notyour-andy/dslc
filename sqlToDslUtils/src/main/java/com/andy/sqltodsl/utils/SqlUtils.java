@@ -4,8 +4,7 @@ import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLLimit;
 import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
-import com.alibaba.druid.sql.ast.expr.SQLQueryExpr;
+import com.alibaba.druid.sql.ast.expr.*;
 import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
@@ -26,39 +25,15 @@ public class SqlUtils {
 
 
     public static void main(String[] args) {
-        String sql = "SELECT id, (select type from t2 where state = 0 limit 1) FROM (select type from t2 where t2.state = #{state} and t2.type = 1 limit 1) t1 where t1.id = #{159} and  t1.type in (select type from t4 where state = 0)";
-        List<String> resutlList = new ArrayList<>();
+        String sql = "SELECT state, left(name, 20) as name FROM T1 WHERE STATE = 0";
+//        List<String> selectList = getSelectList(sql);
+//        System.out.println(selectList);
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
-//        resutlList.addAll(TreeUtils.getCondByWhere(queryBlock.getWhere()));
-        SQLTableSource tbSrc = queryBlock.getFrom();
-//        resutlList = TreeUtils.getCondByFrom(tbSrc);
-//        TreeUtils.getCondBySelect(queryBlock.getSelectList());
         List<SQLSelectItem> selectList = queryBlock.getSelectList();
-        for (SQLSelectItem sqlSelectItem : selectList) {
-            SQLExpr expr = sqlSelectItem.getExpr();
-            if (expr instanceof SQLQueryExpr){
-                MySqlSelectQueryBlock subQuery = (MySqlSelectQueryBlock) ((SQLQueryExpr) expr).subQuery.getQueryBlock();
-
-            }
-        }
-//        TreeUtils.getCondByWhere()
-//        MySqlSchemaStatVisitor visitor = SqlUtils.getVisitor(sql);
-//        for (TableStat.Condition condition : visitor.getConditions()) {
-//            System.out.println(condition);
-//        }
-//        System.out.println(1);
-        for (String s : resutlList) {
-            System.out.println(s);
-        }
-
+        System.out.println("d");
     }
 
 
-//
-//    public static void getWhereCondition(MySqlSelectQueryBlock queryBlock){
-//        //处理查询
-//        List<String> resultList =
-//    }
 
 
 
@@ -73,14 +48,12 @@ public class SqlUtils {
     public static Map<String, Object> getLimitArgMap(String sql){
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
         SQLLimit limit = queryBlock.getLimit();
-        if(Objects.isNull(limit)){
-            return null;
-        }else{
-            Map<String, Object> returnMap = new HashMap<>();
+        Map<String, Object> returnMap = new HashMap<>();
+        if(!Objects.isNull(limit)){
             returnMap.put("from", Objects.isNull(limit.getOffset()) ? 0 : limit.getOffset().toString());
             returnMap.put("size", limit.getRowCount().toString());
-            return returnMap;
         }
+        return returnMap;
     }
 
     /**
@@ -109,10 +82,11 @@ public class SqlUtils {
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
         List<SQLSelectItem> selectList = queryBlock.getSelectList();
         if (CollectionUtils.isNotEmpty(selectList)){
-            //如果含有*,且只能只含有* 这里的filter:当查询字段为空, queryBlock会将整条sql语句作为查询字段, 去除这种情况
-            List<String> fieldList = selectList.stream().map(ele -> ele.getExpr().toString())
-                                                        .filter(ele -> !(ele.contains("SELECT") && ele.contains("FROM")))
-                                                        .collect(Collectors.toList());
+            //如果含有*,且只能只含有* 这里的filter:当查询字段为空后存在子查询, queryBlock会将整条sql语句作为查询字段, 去除这种情况
+            List<String> fieldList = selectList.stream()
+                                               .filter(ele -> (ele.getExpr() instanceof SQLQueryExpr))
+                                               .map(ele -> ele.getExpr().toString())
+                                               .collect(Collectors.toList());
             if (CollectionUtils.isNotEmpty(fieldList)) {
                 if (fieldList.contains("*")) {
                     if (fieldList.size() == 1) {
@@ -160,8 +134,8 @@ public class SqlUtils {
         OrderColumnModel model;
         MySqlSchemaStatVisitor visitor = getVisitor(sql);
         for (TableStat.Column column : visitor.getOrderByColumns()) {
-
             model = new OrderColumnModel();
+            //默认名字
             model.setName(column.getName());
             //默认增
             model.setOrderType(MapUtils.getString(column.getAttributes(), "orderBy.type", "ASC"));
@@ -218,6 +192,84 @@ public class SqlUtils {
             stm = stm.replace("\t", "");
         }
         return stm;
+    }
 
+
+
+
+    /**
+    *获取Where条件中的where查询val
+    *@author Andy
+    *@date 2023/2/22
+    */
+    public static List<String> getCondByWhere(SQLExpr sqlExpr){
+        List<String> resultList = new ArrayList<>();
+        if (!Objects.isNull(sqlExpr)){
+            if (sqlExpr instanceof SQLBinaryOpExpr){
+                SQLBinaryOpExpr opExpr = (SQLBinaryOpExpr) sqlExpr;
+                SQLExpr left = opExpr.getLeft();
+                SQLExpr right = opExpr.getRight();
+                boolean logical = opExpr.getOperator().isLogical();
+                if (logical){
+                    //逻辑符号型
+                    resultList.addAll(getCondByWhere(left));
+                    resultList.addAll(getCondByWhere(right));
+                }else{
+                    resultList.add(opExpr.getRight().toString());
+                }
+            }else if (sqlExpr instanceof SQLInSubQueryExpr){
+                MySqlSelectQueryBlock query = (MySqlSelectQueryBlock) ((SQLInSubQueryExpr) sqlExpr).getSubQuery().getQuery();
+                resultList.addAll(getWhereValue(query));
+            }
+        }
+        return resultList;
+    }
+
+
+    /**
+    *获取From语句中的where查询val
+    *@author Andy
+    *@date 2023/2/22
+    */
+    public static List<String> getCondByFrom(SQLTableSource tbSrc) {
+        List<String> resultList = new ArrayList<>();
+        if (!Objects.isNull(tbSrc)){
+            if (tbSrc instanceof SQLSubqueryTableSource) {
+                MySqlSelectQueryBlock query = (MySqlSelectQueryBlock) ((SQLSubqueryTableSource) tbSrc).getSelect().getQuery();
+                resultList.addAll(getWhereValue(query));
+            }
+        }
+        return resultList;
+    }
+
+    /**
+    *获取Select语句中where查询val
+    *@author Andy
+    *@date 2023/2/22
+    */
+    public static List<String> getCondBySelect(List<SQLSelectItem> selectList) {
+        List<String> resultList = new ArrayList<>();
+        if (CollectionUtils.isNotEmpty(selectList)){
+            for (SQLSelectItem sqlSelectItem : selectList) {
+                SQLExpr expr = sqlSelectItem.getExpr();
+                if (expr instanceof SQLQueryExpr){
+                    MySqlSelectQueryBlock subQuery = (MySqlSelectQueryBlock) ((SQLQueryExpr) expr).subQuery.getQueryBlock();
+                    resultList.addAll(getWhereValue(subQuery));
+                }
+            }
+        }
+        return resultList;
+    }
+
+
+    public static List<String> getWhereValue(MySqlSelectQueryBlock queryBlock){
+        List<String> resultList = new ArrayList<>();
+        //遍历where
+        resultList.addAll(getCondByWhere(queryBlock.getWhere()));
+        //遍历from
+        resultList.addAll(getCondByFrom(queryBlock.getFrom()));
+        //遍历select
+        resultList.addAll(getCondBySelect(queryBlock.getSelectList()));
+        return resultList;
     }
 }

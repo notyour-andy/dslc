@@ -1,19 +1,11 @@
 package com.andy.sqltodsl.utils;
 
-import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
-import com.alibaba.druid.sql.ast.expr.SQLInSubQueryExpr;
-import com.alibaba.druid.sql.ast.expr.SQLQueryExpr;
-import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
-import com.alibaba.druid.sql.ast.statement.SQLSubqueryTableSource;
-import com.alibaba.druid.sql.ast.statement.SQLTableSource;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.andy.sqltodsl.bean.models.TreeNode;
 import org.apache.commons.collections4.CollectionUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -23,12 +15,6 @@ import java.util.stream.Collectors;
  * @date 2023-02-02
  */
 public class TreeUtils {
-
-    private static final String FIELD = "field";
-
-    private static final String VALUE = "value";
-
-    private static final String OPERATOR = "operator";
 
     /**
      *构建指定pid下的节点树
@@ -82,64 +68,4 @@ public class TreeUtils {
         return treeNode;
     }
 
-    public static List<String> getCondByWhere(SQLExpr sqlExpr){
-        List<String> resultList = new ArrayList<>();
-        if (!Objects.isNull(sqlExpr)){
-            if (sqlExpr instanceof SQLBinaryOpExpr){
-                SQLBinaryOpExpr opExpr = (SQLBinaryOpExpr) sqlExpr;
-                SQLExpr left = opExpr.getLeft();
-                SQLExpr right = opExpr.getRight();
-                boolean logical = opExpr.getOperator().isLogical();
-                if (logical){
-                    //逻辑符号型
-                    resultList.addAll(getCondByWhere(left));
-                    resultList.addAll(getCondByWhere(right));
-                }else{
-                    resultList.add(opExpr.getRight().toString());
-                }
-            }else if (sqlExpr instanceof SQLInSubQueryExpr){
-                MySqlSelectQueryBlock query = (MySqlSelectQueryBlock) ((SQLInSubQueryExpr) sqlExpr).getSubQuery().getQuery();
-                resultList.addAll(getWhereValue(query));
-            }
-        }
-        return resultList;
-    }
-
-
-    public static List<String> getCondByFrom(SQLTableSource tbSrc) {
-        List<String> resultList = new ArrayList<>();
-        if (!Objects.isNull(tbSrc)){
-            if (tbSrc instanceof SQLSubqueryTableSource){
-                MySqlSelectQueryBlock query = (MySqlSelectQueryBlock) ((SQLSubqueryTableSource) tbSrc).getSelect().getQuery();
-//                //处理where
-//                resultList.addAll(getCondByWhere(query.getWhere()));
-//                //判断是否存在子查询
-//                resultList.addAll(getCondByFrom(query.getFrom()));
-            }
-        }
-        return resultList;
-    }
-
-    public static List<String> getCondBySelect(List<SQLSelectItem> selectList) {
-        List<String> resultList = new ArrayList<>();
-        if (CollectionUtils.isNotEmpty(selectList)){
-            for (SQLSelectItem sqlSelectItem : selectList) {
-                    SQLExpr expr = sqlSelectItem.getExpr();
-                    if (expr instanceof SQLQueryExpr){
-                        MySqlSelectQueryBlock subQuery = (MySqlSelectQueryBlock) ((SQLQueryExpr) expr).subQuery.getQueryBlock();
-
-                    }
-                }
-            }
-        return resultList;
-    }
-
-
-    public static List<String> getWhereValue(MySqlSelectQueryBlock queryBlock){
-        List<String> resultList = new ArrayList<>();
-        //遍历where
-        resultList.addAll(TreeUtils.getCondByWhere(queryBlock.getWhere()));
-        //遍历from
-        resultList.addAll(TreeUtils.getCondByFrom(queryBlock.getFrom()));
-    }
 }

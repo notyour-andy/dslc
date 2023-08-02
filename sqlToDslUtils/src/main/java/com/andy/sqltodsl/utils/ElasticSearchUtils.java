@@ -406,12 +406,7 @@ public class ElasticSearchUtils {
         }
 
     }
-
-
-
-
-
-
+    
     /**
      * 判断是否是新的操作符
      * @author Andy
