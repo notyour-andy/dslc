@@ -1,11 +1,20 @@
 package com.andy.sqltodsl.utils;
 
+import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
+import com.alibaba.druid.sql.ast.expr.SQLInSubQueryExpr;
+import com.alibaba.druid.sql.ast.expr.SQLQueryExpr;
+import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
+import com.alibaba.druid.sql.ast.statement.SQLSubqueryTableSource;
+import com.alibaba.druid.sql.ast.statement.SQLTableSource;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.andy.sqltodsl.bean.models.TreeNode;
 import org.apache.commons.collections4.CollectionUtils;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -15,6 +24,11 @@ import java.util.stream.Collectors;
  * @date 2023-02-02
  */
 public class TreeUtils {
+
+
+    public static void main(String[] args) {
+
+    }
 
     /**
      *构建指定pid下的节点树
@@ -67,5 +81,6 @@ public class TreeUtils {
         }
         return treeNode;
     }
+
 
 }

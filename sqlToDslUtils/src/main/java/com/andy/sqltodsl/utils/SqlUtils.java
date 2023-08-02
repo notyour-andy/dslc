@@ -4,7 +4,9 @@ import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLLimit;
 import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.expr.*;
+import com.alibaba.druid.sql.ast.expr.SQLBinaryOpExpr;
+import com.alibaba.druid.sql.ast.expr.SQLInSubQueryExpr;
+import com.alibaba.druid.sql.ast.expr.SQLQueryExpr;
 import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
@@ -25,15 +27,21 @@ public class SqlUtils {
 
 
     public static void main(String[] args) {
-        String sql = "SELECT state, left(name, 20) as name FROM T1 WHERE STATE = 0";
-//        List<String> selectList = getSelectList(sql);
-//        System.out.println(selectList);
-        MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
-        List<SQLSelectItem> selectList = queryBlock.getSelectList();
-        System.out.println("d");
+        String sql = "select #{DS}, (Select name from t2 where t2.state = #{val2} and t2.id in (select id from t3 where t3.tag = #{val3}) limit 1) from t1 where t1.state = #{state} and t1.type = #{type} or t1.name in (Select name from t2 where t2.state = #{state2} and t2.id in (select id from t3 where t3.tag = #{tag}))";
+        MySqlSelectQueryBlock initBlock = SqlUtils.getQueryBlock(sql);
+        List<String> whereValue = getWhereValue(initBlock);
+        for (String s : whereValue) {
+            System.out.println(s);
+        }
+
     }
 
 
+//
+//    public static void getWhereCondition(MySqlSelectQueryBlock queryBlock){
+//        //处理查询
+//        List<String> resultList =
+//    }
 
 
 
@@ -48,12 +56,14 @@ public class SqlUtils {
     public static Map<String, Object> getLimitArgMap(String sql){
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
         SQLLimit limit = queryBlock.getLimit();
-        Map<String, Object> returnMap = new HashMap<>();
-        if(!Objects.isNull(limit)){
+        if(Objects.isNull(limit)){
+            return null;
+        }else{
+            Map<String, Object> returnMap = new HashMap<>();
             returnMap.put("from", Objects.isNull(limit.getOffset()) ? 0 : limit.getOffset().toString());
             returnMap.put("size", limit.getRowCount().toString());
+            return returnMap;
         }
-        return returnMap;
     }
 
     /**
@@ -82,11 +92,10 @@ public class SqlUtils {
         MySqlSelectQueryBlock queryBlock = getQueryBlock(sql);
         List<SQLSelectItem> selectList = queryBlock.getSelectList();
         if (CollectionUtils.isNotEmpty(selectList)){
-            //如果含有*,且只能只含有* 这里的filter:当查询字段为空后存在子查询, queryBlock会将整条sql语句作为查询字段, 去除这种情况
-            List<String> fieldList = selectList.stream()
-                                               .filter(ele -> (ele.getExpr() instanceof SQLQueryExpr))
-                                               .map(ele -> ele.getExpr().toString())
-                                               .collect(Collectors.toList());
+            //如果含有*,且只能只含有* 这里的filter:当查询字段为空, queryBlock会将整条sql语句作为查询字段, 去除这种情况
+            List<String> fieldList = selectList.stream().map(ele -> ele.getExpr().toString())
+                                                        .filter(ele -> !(ele.contains("SELECT") && ele.contains("FROM")))
+                                                        .collect(Collectors.toList());
             if (CollectionUtils.isNotEmpty(fieldList)) {
                 if (fieldList.contains("*")) {
                     if (fieldList.size() == 1) {
@@ -134,8 +143,8 @@ public class SqlUtils {
         OrderColumnModel model;
         MySqlSchemaStatVisitor visitor = getVisitor(sql);
         for (TableStat.Column column : visitor.getOrderByColumns()) {
+
             model = new OrderColumnModel();
-            //默认名字
             model.setName(column.getName());
             //默认增
             model.setOrderType(MapUtils.getString(column.getAttributes(), "orderBy.type", "ASC"));
@@ -194,14 +203,11 @@ public class SqlUtils {
         return stm;
     }
 
-
-
-
     /**
-    *获取Where条件中的where查询val
-    *@author Andy
-    *@date 2023/2/22
-    */
+     *
+     * @author Andy
+     * @date 2023/2/21 22:59
+     **/
     public static List<String> getCondByWhere(SQLExpr sqlExpr){
         List<String> resultList = new ArrayList<>();
         if (!Objects.isNull(sqlExpr)){
@@ -227,14 +233,14 @@ public class SqlUtils {
 
 
     /**
-    *获取From语句中的where查询val
-    *@author Andy
-    *@date 2023/2/22
-    */
+     * 从from语句中提取where查询的值
+     * @author Andy
+     * @date 2023/2/21 22:59
+     **/
     public static List<String> getCondByFrom(SQLTableSource tbSrc) {
         List<String> resultList = new ArrayList<>();
         if (!Objects.isNull(tbSrc)){
-            if (tbSrc instanceof SQLSubqueryTableSource) {
+            if (tbSrc instanceof SQLSubqueryTableSource){
                 MySqlSelectQueryBlock query = (MySqlSelectQueryBlock) ((SQLSubqueryTableSource) tbSrc).getSelect().getQuery();
                 resultList.addAll(getWhereValue(query));
             }
@@ -242,11 +248,12 @@ public class SqlUtils {
         return resultList;
     }
 
+
     /**
-    *获取Select语句中where查询val
-    *@author Andy
-    *@date 2023/2/22
-    */
+     * 从select语句中提取where查询的值
+     * @author Andy
+     * @date 2023/2/21 22:56
+     **/
     public static List<String> getCondBySelect(List<SQLSelectItem> selectList) {
         List<String> resultList = new ArrayList<>();
         if (CollectionUtils.isNotEmpty(selectList)){
@@ -262,6 +269,11 @@ public class SqlUtils {
     }
 
 
+    /**
+     * 遍历sql where.select,from 语句提取查询Val
+     * @author Andy
+     * @date 2023/2/21 22:02
+     **/
     public static List<String> getWhereValue(MySqlSelectQueryBlock queryBlock){
         List<String> resultList = new ArrayList<>();
         //遍历where
@@ -270,6 +282,11 @@ public class SqlUtils {
         resultList.addAll(getCondByFrom(queryBlock.getFrom()));
         //遍历select
         resultList.addAll(getCondBySelect(queryBlock.getSelectList()));
+        //过滤
+        resultList = resultList.stream()
+                               .filter(ele -> CommonUtils.isCompleteMatch(ele, "\\#\\{(\\S)+?\\}|\\$\\{(\\S)+?\\}"))
+                               .distinct()
+                               .collect(Collectors.toList());
         return resultList;
     }
 }

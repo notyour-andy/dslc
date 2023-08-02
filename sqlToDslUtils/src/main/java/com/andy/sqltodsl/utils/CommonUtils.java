@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public class CommonUtils {
 
@@ -138,6 +141,14 @@ public class CommonUtils {
             }
         }
         return null;
+    }
+
+
+    public static boolean isCompleteMatch(String text, String regex){
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(text);
+        //完全匹配
+        return matcher.matches();
     }
 
 
